@@ -271,27 +271,27 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           className="flex items-center justify-between mb-6"
         >
           <h2 className="text-2xl font-bold">Recent Projects</h2>
-          <Button 
+            <Button 
             size="sm" 
             className="bg-blue-600 hover:bg-blue-500 transition-colors flex items-center gap-2"
-            asChild
-          >
-            <Link href="/generate">
+              asChild
+            >
+              <Link href="/generate">
               <PlusCircle className="h-4 w-4" />
               <span>New Project</span>
-            </Link>
-          </Button>
-        </motion.div>
+              </Link>
+            </Button>
+          </motion.div>
 
         {/* Project listing */}
-        <AnimatePresence>
+            <AnimatePresence>
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -349,11 +349,11 @@ export default function DashboardPage() {
                   </Card>
                 </motion.div>
               ))}
-            </div>
+          </div>
           ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center py-20 text-center"
             >
               <div className="rounded-full bg-muted p-6 mb-6">
@@ -371,10 +371,10 @@ export default function DashboardPage() {
                 <Link href="/generate">
                   <PlusCircle className="h-4 w-4" />
                   Generate First Blueprint
-                </Link>
-              </Button>
-            </motion.div>
-          )}
+              </Link>
+            </Button>
+          </motion.div>
+        )}
         </AnimatePresence>
       </div>
     </DashboardLayout>

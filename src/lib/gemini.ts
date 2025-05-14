@@ -12,67 +12,67 @@ export async function generateIdea(
   ideaName: string,
   description: string
 ) {
-  const prompt = `
-    Generate a comprehensive SaaS idea validation and blueprint for: "${ideaName}"
-    
-    Description: ${description}
-    
-    Your response should be in JSON format with the following structure:
-    {
-      "validation": {
-        "score": number from 1-10,
-        "feedback": "detailed feedback on strengths and weaknesses",
-        "improvements": ["suggestion1", "suggestion2", "suggestion3"]
-      },
-      "features": {
-        "core": ["feature1", "feature2", "feature3"],
-        "premium": ["premium1", "premium2"],
-        "future": ["future1", "future2"]
-      },
-      "techStack": {
-        "frontend": ["technology1", "technology2"],
-        "backend": ["technology1", "technology2"],
-        "database": ["technology1"],
-        "hosting": ["technology1"],
-        "other": ["technology1", "technology2"]
-      },
-      "pricingModel": {
-        "tiers": [
+    const prompt = `
+      Generate a comprehensive SaaS idea validation and blueprint for: "${ideaName}"
+      
+      Description: ${description}
+      
+      Your response should be in JSON format with the following structure:
+      {
+        "validation": {
+          "score": number from 1-10,
+          "feedback": "detailed feedback on strengths and weaknesses",
+          "improvements": ["suggestion1", "suggestion2", "suggestion3"]
+        },
+        "features": {
+          "core": ["feature1", "feature2", "feature3"],
+          "premium": ["premium1", "premium2"],
+          "future": ["future1", "future2"]
+        },
+        "techStack": {
+          "frontend": ["technology1", "technology2"],
+          "backend": ["technology1", "technology2"],
+          "database": ["technology1"],
+          "hosting": ["technology1"],
+          "other": ["technology1", "technology2"]
+        },
+        "pricingModel": {
+          "tiers": [
+            {
+              "name": "Free",
+              "price": "$0",
+              "features": ["feature1", "feature2"]
+            },
+            {
+              "name": "Pro",
+              "price": "$X/month",
+              "features": ["feature1", "feature2", "feature3"]
+            }
+          ],
+          "strategy": "Brief pricing strategy explanation"
+        },
+        "userFlow": "mermaid flowchart code for user flow diagram",
+        "tasks": [
           {
-            "name": "Free",
-            "price": "$0",
-            "features": ["feature1", "feature2"]
-          },
-          {
-            "name": "Pro",
-            "price": "$X/month",
-            "features": ["feature1", "feature2", "feature3"]
+            "title": "Task 1",
+            "description": "Description",
+            "priority": "High/Medium/Low",
+            "category": "Frontend/Backend/Design/etc"
           }
-        ],
-        "strategy": "Brief pricing strategy explanation"
-      },
-      "userFlow": "mermaid flowchart code for user flow diagram",
-      "tasks": [
-        {
-          "title": "Task 1",
-          "description": "Description",
-          "priority": "High/Medium/Low",
-          "category": "Frontend/Backend/Design/etc"
-        }
-      ]
-    }
-  `;
+        ]
+      }
+    `;
 
   try {
     console.log("Generating with Gemini Flash model (2.0)...");
     const result = await geminiModel.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    
+
     // Extract JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Failed to parse JSON response');
-    
+
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error('Error generating idea with Gemini:', error);

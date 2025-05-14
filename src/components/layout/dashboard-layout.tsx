@@ -72,59 +72,59 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="justify-between gap-10">
-          <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-            {open ? <Logo /> : <LogoIcon />}
-            <div className="mt-8 flex flex-col gap-2">
-              {links.map((link, idx) => (
-                <SidebarLink 
-                  key={idx} 
-                  link={link}
-                  className={pathname === link.href ? "bg-neutral-200 dark:bg-neutral-700 rounded-md" : ""}
-                />
-              ))}
+        <Sidebar open={open} setOpen={setOpen}>
+          <SidebarBody className="justify-between gap-10">
+            <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+              {open ? <Logo /> : <LogoIcon />}
+              <div className="mt-8 flex flex-col gap-2">
+                {links.map((link, idx) => (
+                  <SidebarLink 
+                    key={idx} 
+                    link={link}
+                    className={pathname === link.href ? "bg-neutral-200 dark:bg-neutral-700 rounded-md" : ""}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col gap-4">
-            <SidebarLink
-              link={{
-                label: isLoaded && user?.firstName ? `${user.firstName} ${user.lastName || ''}` : "User Profile",
-                href: "/profile",
-                icon: (
-                  <div
-                    className="h-7 w-7 shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium"
-                  >
-                    {isLoaded && user?.firstName ? user.firstName[0] : "U"}
-                  </div>
-                ),
-              }}
-            />
-          </div>
-        </SidebarBody>
-      </Sidebar>
+            <div className="flex flex-col gap-4">
+              <SidebarLink
+                link={{
+                  label: isLoaded && user?.firstName ? `${user.firstName} ${user.lastName || ''}` : "User Profile",
+                  href: "/profile",
+                  icon: (
+                    <div
+                      className="h-7 w-7 shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium"
+                    >
+                      {isLoaded && user?.firstName ? user.firstName[0] : "U"}
+                    </div>
+                  ),
+                }}
+              />
+            </div>
+          </SidebarBody>
+        </Sidebar>
 
-      {/* Main Content with Header */}
-      <div className="flex flex-col flex-1">
-        {/* Header with user button and theme toggle */}
-        <header className="flex items-center justify-end h-16 px-6 border-b border-neutral-200 dark:border-neutral-800">
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  userButtonAvatarBox: "h-8 w-8"
-                }
-              }}
-            />
-          </div>
-        </header>
-        
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
+        {/* Main Content with Header */}
+        <div className="flex flex-col flex-1">
+          {/* Header with user button and theme toggle */}
+          <header className="flex items-center justify-end h-16 px-6 border-b border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "h-8 w-8"
+                  }
+                }}
+              />
+            </div>
+          </header>
+          
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto p-6">
+            {children}
+          </main>
       </div>
     </div>
   );
