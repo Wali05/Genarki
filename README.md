@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Genarki 🚀
 
-## Getting Started
+**Validate and blueprint your SaaS ideas in minutes.**
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🌟 Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- ⚙️ AI-powered idea generation (Gemini)
+- 📊 Interactive validation scores & dynamic blueprints
+- 🔒 Secure auth with Clerk & Supabase RLS
+- 🎨 Responsive dashboard with animations
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Tech Stack
 
-## Learn More
+- Next.js 15 & React 19
+- Clerk (Authentication)
+- Supabase (PostgreSQL & RLS)
+- Tailwind CSS & shadcn/ui
+- Framer Motion & Mermaid.js
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Platform Overview
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Genarki is a cutting-edge SaaS validation and blueprint platform that empowers entrepreneurs and teams to bring their ideas to life with confidence. Leveraging advanced AI, Genarki helps you:
+- Validate market potential with data-driven scoring
+- Generate detailed product blueprints and tech stack recommendations
+- Visualize user flows, features, and pricing models
+- Convert outlines into actionable tasks and track progress
 
-## Deploy on Vercel
+## 🌟 Key Benefits
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Accelerate decision-making with AI-driven insights  
+- Ensure alignment between vision and execution  
+- Collaborate securely with role-based access control  
+- Focus on innovation while Genarki handles the details
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔒 Security & Compliance
+
+- End-to-end encryption of user data  
+- Clerk-managed authentication with JWT  
+- Supabase Row-Level Security policies
+
+## 📄 License
+
+This project is licensed under the MIT License.
