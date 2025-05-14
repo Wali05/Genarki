@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/context/auth-context";
 import {
   Navbar,
   NavBody,
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/resizable-navbar";
 
 export function LandingNavbar() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { user, loading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const navItems = [
@@ -41,7 +41,7 @@ export function LandingNavbar() {
         <NavbarLogo />
         <NavItems items={navItems} />
         <div className="flex items-center gap-4">
-          {isLoaded && isSignedIn ? (
+          {!loading && user ? (
             <NavbarButton href="/dashboard" variant="gradient">Dashboard</NavbarButton>
           ) : (
             <>
@@ -55,8 +55,15 @@ export function LandingNavbar() {
       {/* Mobile Navigation */}
       <MobileNav>
         <MobileNavHeader>
-          <Link href={isLoaded && isSignedIn ? "/dashboard" : "/"} className="flex items-center">
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">Genarki</span>
+          <Link href={!loading && user ? "/dashboard" : "/"} className="flex items-center">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/images/logo.png" 
+                alt="Genarki Logo" 
+                className="h-7 w-7 object-contain"
+              />
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">Genarki</span>
+            </div>
           </Link>
           <div className="flex items-center gap-4">
             <MobileNavToggle
@@ -81,7 +88,7 @@ export function LandingNavbar() {
             </a>
           ))}
           <div className="flex w-full flex-col gap-4 mt-4">
-            {isLoaded && isSignedIn ? (
+            {!loading && user ? (
               <NavbarButton
                 href="/dashboard"
                 variant="gradient"

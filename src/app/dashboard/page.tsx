@@ -5,10 +5,12 @@ import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Brain, Star, Trash2, BarChart3, ChevronRight, Loader2, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { PlusCircle, Brain, Star, Trash2, BarChart3, ChevronRight, Loader2, TrendingUp, Clock, CheckCircle, ArrowUpRight, ListTodo, CalendarIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/auth-context";
+import { Progress } from "@/components/ui/progress";
 
 type Idea = {
   id: string;
@@ -26,98 +28,148 @@ type ProjectMetrics = {
 
 export default function DashboardPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<ProjectMetrics>({
     total: 0,
     inProgress: 0,
     completed: 0
   });
-  const { user } = useUser();
+  const { user } = useAuth();
+
+  // Function to link tasks to projects and track progress
+  const getTasksForProject = (projectId: string, allTasks: any[]) => {
+    return allTasks.filter(task => task.project_id === projectId);
+  };
+  
+  const getTaskProgress = (tasks: any[]) => {
+    if (!tasks || tasks.length === 0) return 0;
+    const completed = tasks.filter(task => task.status === 'Done').length;
+    return Math.round((completed / tasks.length) * 100);
+  };
 
   useEffect(() => {
     async function fetchIdeas() {
       setLoading(true);
       
       try {
-        if (!user) {
-          // If no user is logged in yet or in development mode
-          const storedIdea = sessionStorage.getItem('currentIdea');
-          if (storedIdea) {
+        // Always check session storage first, regardless of user status
+        const storedIdea = sessionStorage.getItem('currentIdea');
+        let sessionIdeas: Idea[] = [];
+        let sessionTasks: any[] = [];
+        
+        if (storedIdea) {
+          try {
             const parsedIdea = JSON.parse(storedIdea);
-            setIdeas([parsedIdea]);
+            sessionIdeas = [parsedIdea];
+            
+            // Get tasks from the blueprint
+            const storedBlueprint = sessionStorage.getItem('currentBlueprint');
+            if (storedBlueprint) {
+              const parsedBlueprint = JSON.parse(storedBlueprint);
+              if (parsedBlueprint.tasks && Array.isArray(parsedBlueprint.tasks)) {
+                sessionTasks = parsedBlueprint.tasks.map((task: any, index: number) => ({
+                  id: `${parsedIdea.id}-task-${index}`,
+                  project_id: parsedIdea.id,
+                  title: task.title,
+                  description: task.description || "",
+                  priority: task.priority || "Medium",
+                  category: task.category || "General",
+                  status: task.status || "Todo"
+                }));
+              }
+            }
+            
+            // Always show session storage ideas as a fallback
+            setIdeas(sessionIdeas);
+            setTasks(sessionTasks);
+            setMetrics({
+              total: 1,
+              inProgress: 1,
+              completed: 0
+            });
+          } catch (error) {
+            console.error("Error parsing stored idea:", error);
+          }
+        }
+        
+        // If logged in, fetch from Supabase
+        if (user) {
+          const { data: ideasData, error: ideasError } = await supabase
+            .from('ideas')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+            
+          if (ideasError) {
+            console.error("Error fetching ideas:", ideasError);
+            toast.error("Failed to load projects");
+            return;
+          }
+          
+          if (ideasData && ideasData.length > 0) {
+            // Fetch blueprints to get task data
+            const { data: blueprintsData, error: blueprintsError } = await supabase
+              .from('blueprints')
+              .select('idea_id, tasks')
+              .in('idea_id', ideasData.map(idea => idea.id));
+            
+            if (blueprintsError) {
+              console.error("Error fetching blueprints:", blueprintsError);
+            }
+            
+            // Extract tasks from blueprints
+            let dbTasks: any[] = [];
+            if (blueprintsData) {
+              blueprintsData.forEach(blueprint => {
+                if (blueprint.tasks && Array.isArray(blueprint.tasks)) {
+                  const projectTasks = blueprint.tasks.map((task: any, index: number) => ({
+                    id: `${blueprint.idea_id}-task-${index}`,
+                    project_id: blueprint.idea_id,
+                    title: task.title,
+                    description: task.description || "",
+                    priority: task.priority || "Medium",
+                    category: task.category || "General",
+                    status: task.status || "Todo"
+                  }));
+                  dbTasks = [...dbTasks, ...projectTasks];
+                }
+              });
+            }
+            
+            // Set data from database
+            setIdeas(ideasData);
+            setTasks([...sessionTasks, ...dbTasks]);
+            
+            // Calculate metrics
+            const completed = ideasData.filter(idea => idea.validation_score >= 8).length;
+            setMetrics({
+              total: ideasData.length,
+              inProgress: ideasData.length - completed,
+              completed
+            });
+          } else if (sessionIdeas.length > 0) {
+            // Use session ideas if no database ideas
+            setIdeas(sessionIdeas);
+            setTasks(sessionTasks);
             setMetrics({
               total: 1,
               inProgress: 1,
               completed: 0
             });
           } else {
+            // No ideas found
             setIdeas([]);
+            setTasks([]);
             setMetrics({
               total: 0,
               inProgress: 0,
               completed: 0
             });
           }
-          setLoading(false);
-          return;
-        }
-        
-        // Fetch ideas from Supabase
-        const { data: ideasData, error: ideasError } = await supabase
-          .from('ideas')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        
-        if (ideasError) {
-          console.error("Error fetching ideas:", ideasError);
-          toast.error("Failed to load projects");
-          setIdeas([]);
-          setLoading(false);
-          return;
-        }
-        
-        if (ideasData && ideasData.length > 0) {
-          setIdeas(ideasData);
-          
-          // Fetch blueprints to determine project status
-          const { data: blueprintsData, error: blueprintsError } = await supabase
-            .from('blueprints')
-            .select('*')
-            .in('idea_id', ideasData.map(idea => idea.id));
-            
-          if (blueprintsError) {
-            console.error("Error fetching blueprints:", blueprintsError);
-          }
-          
-          // Calculate metrics
-          const completed = blueprintsData?.filter(bp => {
-            const sections = Object.keys(bp).filter(k => 
-              !['id', 'idea_id', 'created_at', 'updated_at'].includes(k) && 
-              bp[k] && (
-                (typeof bp[k] === 'object' && Object.keys(bp[k]).length > 0) ||
-                (typeof bp[k] === 'string' && bp[k].length > 0)
-              )
-            ).length;
-            const progress = Math.min(100, Math.round((sections / 6) * 100));
-            return progress >= 90;
-          }).length || 0;
-          
-          setMetrics({
-            total: ideasData.length,
-            inProgress: ideasData.length - completed,
-            completed
-          });
-        } else {
-          setIdeas([]);
-          setMetrics({
-            total: 0,
-            inProgress: 0,
-            completed: 0
-          });
         }
       } catch (error) {
-        console.error("Error fetching ideas:", error);
+        console.error("Error in fetchIdeas:", error);
         toast.error("Failed to load projects");
       } finally {
         setLoading(false);
@@ -138,8 +190,26 @@ export default function DashboardPage() {
         inProgress: Math.max(0, prev.inProgress - 1)
       }));
       
-      // If user is logged in, delete from Supabase
+      // Always try to remove from sessionStorage first
+      const storedIdea = sessionStorage.getItem('currentIdea');
+      if (storedIdea) {
+        try {
+          const parsedIdea = JSON.parse(storedIdea);
+          if (parsedIdea.id === ideaId) {
+            console.log("Removing project from session storage:", ideaId);
+            sessionStorage.removeItem('currentIdea');
+            sessionStorage.removeItem('currentBlueprint');
+            sessionStorage.removeItem('projectSaved');
+          }
+        } catch (e) {
+          console.error("Error parsing stored idea:", e);
+        }
+      }
+      
+      // If user is logged in, also delete from Supabase
       if (user) {
+        console.log("Deleting project from Supabase:", ideaId);
+        
         // First delete any blueprint (due to foreign key constraint)
         const { error: blueprintError } = await supabase
           .from('blueprints')
@@ -160,16 +230,6 @@ export default function DashboardPage() {
           console.error("Error deleting idea:", ideaError);
           toast.error("Failed to delete project");
           return;
-        }
-      } else {
-        // For development mode, remove from sessionStorage
-        const storedIdea = sessionStorage.getItem('currentIdea');
-        if (storedIdea) {
-          const parsedIdea = JSON.parse(storedIdea);
-          if (parsedIdea.id === ideaId) {
-            sessionStorage.removeItem('currentIdea');
-            sessionStorage.removeItem('currentBlueprint');
-          }
         }
       }
       
@@ -195,187 +255,194 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="container py-10 max-w-6xl mx-auto">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-10"
-        >
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-3">Welcome to Genarki</h1>
-          <p className="text-muted-foreground text-lg">Your SaaS idea validation and blueprint platform</p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            whileHover={{ scale: 1.03 }}
-            className="transition-all duration-200"
-          >
-            <Card className="bg-gradient-to-br from-blue-600/90 to-blue-500 text-white shadow-lg shadow-blue-100 dark:shadow-blue-900/20 border-0 h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                  <TrendingUp className="h-5 w-5" />
-                  Total Projects
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{metrics.total}</div>
-                <p className="text-blue-100 text-sm">Your blueprint collection</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            whileHover={{ scale: 1.03 }}
-            className="transition-all duration-200"
-          >
-            <Card className="bg-gradient-to-br from-purple-600/90 to-purple-500 text-white shadow-lg shadow-purple-100 dark:shadow-purple-900/20 border-0 h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                  <Clock className="h-5 w-5" />
-                  In Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{metrics.inProgress}</div>
-                <p className="text-purple-100 text-sm">Projects being developed</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            whileHover={{ scale: 1.03 }}
-            className="transition-all duration-200"
-          >
-            <Card className="bg-gradient-to-br from-green-600/90 to-green-500 text-white shadow-lg shadow-green-100 dark:shadow-green-900/20 border-0 h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                  <CheckCircle className="h-5 w-5" />
-                  Successful Launch
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{metrics.completed}</div>
-                <p className="text-green-100 text-sm">Projects ready for market</p>
-              </CardContent>
-            </Card>
-          </motion.div>
+      <div className="container py-6 max-w-5xl mx-auto">
+        <div className="mb-6 text-center md:text-left">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2 text-blue-600">
+            Welcome to Genarki
+          </h1>
+          <p className="text-muted-foreground text-base">
+            Your AI-powered SaaS idea validation and blueprint platform.
+          </p>
         </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="flex items-center justify-between mb-6"
-        >
-          <h2 className="text-2xl font-bold">Recent Projects</h2>
-            <Button 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="bg-blue-600 text-white shadow border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg font-medium">
+                <TrendingUp className="h-5 w-5" />
+                Total Projects
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{metrics.total}</div>
+              <p className="text-blue-100 text-sm">Your blueprint collection</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-purple-600 text-white shadow border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg font-medium">
+                <Clock className="h-5 w-5" />
+                In Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{metrics.inProgress}</div>
+              <p className="text-purple-100 text-sm">Projects being developed</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-green-600 text-white shadow border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg font-medium">
+                <CheckCircle className="h-5 w-5" />
+                Successful Launch
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{metrics.completed}</div>
+              <p className="text-green-100 text-sm">Projects ready for market</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Recent Projects</h2>
+          <Button 
             size="sm" 
-            className="bg-blue-600 hover:bg-blue-500 transition-colors flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-500 transition-colors"
+            asChild
+          >
+            <Link href="/generate">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New Project
+            </Link>
+          </Button>
+        </div>
+
+        {/* Project listing */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        ) : ideas.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {ideas.slice(0, 6).map((idea) => {
+              const ideaTasks = getTasksForProject(idea.id, tasks);
+              const taskProgress = getTaskProgress(ideaTasks);
+              const taskCount = ideaTasks.length;
+              
+              return (
+                <Card key={idea.id} className="h-full border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg line-clamp-1">
+                      <Link 
+                        href={`/idea/${idea.id}`} 
+                        className="inline-flex items-center gap-1 hover:text-blue-600 transition-colors"
+                      >
+                        {idea.title}
+                        <ArrowUpRight className="h-4 w-4 opacity-70" />
+                      </Link>
+                    </CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {idea.description}
+                    </CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent className="pb-0">
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-muted-foreground">Validation Score</span>
+                          <span className={`font-medium ${
+                            idea.validation_score >= 8 ? 'text-green-600 dark:text-green-400' :
+                            idea.validation_score >= 6 ? 'text-blue-600 dark:text-blue-400' :
+                            idea.validation_score >= 4 ? 'text-amber-600 dark:text-amber-400' :
+                            'text-red-600 dark:text-red-400'
+                          }`}>
+                            {idea.validation_score}/10
+                          </span>
+                        </div>
+                        
+                        <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${
+                              idea.validation_score >= 8 ? 'bg-green-500' :
+                              idea.validation_score >= 6 ? 'bg-blue-500' :
+                              idea.validation_score >= 4 ? 'bg-amber-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${idea.validation_score * 10}%` }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {taskCount > 0 && (
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-muted-foreground">
+                              <Link 
+                                href="/tasks" 
+                                className="inline-flex items-center gap-1 hover:text-blue-600 transition-colors"
+                              >
+                                <ListTodo className="h-3.5 w-3.5" />
+                                Tasks
+                              </Link>
+                            </span>
+                            <span className="font-medium">
+                              {ideaTasks.filter(t => t.status === 'Done').length}/{taskCount}
+                            </span>
+                          </div>
+                          
+                          <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full rounded-full bg-purple-500"
+                              style={{ width: `${taskProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                  
+                  <CardFooter className="flex items-center justify-between pt-4 mt-4 border-t">
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      <span>{new Date(idea.created_at).toLocaleDateString()}</span>
+                    </div>
+                    
+                    <Link 
+                      href={`/idea/${idea.id}`}
+                      className="text-xs bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-md transition-colors"
+                    >
+                      View Details
+                    </Link>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white/50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/40 p-6 mb-6">
+              <Brain className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No projects yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Start by creating your first SaaS project blueprint and get
+              instant validation for your idea
+            </p>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-500 transition-colors"
               asChild
             >
               <Link href="/generate">
-              <PlusCircle className="h-4 w-4" />
-              <span>New Project</span>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Generate First Blueprint
               </Link>
             </Button>
-          </motion.div>
-
-        {/* Project listing */}
-            <AnimatePresence>
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : ideas.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {ideas.slice(0, 6).map((idea, i) => (
-                <motion.div
-                  key={idea.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: i * 0.1, duration: 0.4 }}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="hover:z-10"
-                >
-                  <Card className="h-full flex flex-col hover:shadow-lg transition-all group border border-gray-200 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800">
-                    <CardHeader className="pb-2 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/20 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl group-hover:text-blue-600 transition-colors">{idea.title}</CardTitle>
-                        <div className="flex">
-                          {renderStars(idea.validation_score)}
-                        </div>
-                      </div>
-                      <CardDescription>
-                        Created {new Date(idea.created_at).toLocaleDateString()}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/10 transition-colors">
-                      <p className="line-clamp-3 text-sm text-gray-500 dark:text-gray-400">
-                        {idea.description}
-                      </p>
-                    </CardContent>
-                    <CardFooter className="flex justify-between gap-2 pt-4 border-t group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10 transition-colors">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => deleteIdea(idea.id)}
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        asChild
-                        className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300"
-                      >
-                        <Link href={`/idea/${idea.id}`} className="flex items-center">
-                          View 
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
-              ))}
           </div>
-          ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-20 text-center"
-            >
-              <div className="rounded-full bg-muted p-6 mb-6">
-                <Brain className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">No projects yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-md">
-                Start by creating your first SaaS project blueprint and get
-                instant validation for your idea
-              </p>
-              <Button 
-                className="bg-blue-600 hover:bg-blue-500 transition-colors flex items-center gap-2"
-                asChild
-              >
-                <Link href="/generate">
-                  <PlusCircle className="h-4 w-4" />
-                  Generate First Blueprint
-              </Link>
-            </Button>
-          </motion.div>
         )}
-        </AnimatePresence>
       </div>
     </DashboardLayout>
   );

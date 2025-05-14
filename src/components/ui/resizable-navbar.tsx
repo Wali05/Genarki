@@ -232,10 +232,17 @@ export const MobileNavToggle = ({
 export const NavbarLogo = () => {
   return (
     <a
-      href="#"
+      href="/"
       className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
     >
-      <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">Genarki</span>
+      <div className="flex items-center gap-2">
+        <img 
+          src="/images/logo.png" 
+          alt="Genarki Logo" 
+          className="h-8 w-8 object-contain"
+        />
+        <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">Genarki</span>
+      </div>
     </a>
   );
 };

@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateIdea } from '@/lib/gemini';
-import { getAuth } from '@clerk/nextjs/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    // Create a Supabase client using the cookies from the request properly
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore 
+    });
+    
+    // Get the user's session
+    const { data: { session } } = await supabase.auth.getSession();
     
     // Check if user is authenticated
-    if (!userId) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'You must be logged in to use this API' },
         { status: 401 }

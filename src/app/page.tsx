@@ -7,6 +7,7 @@ import { HowItWorksCard } from "@/components/landing/how-it-works-card";
 import { PillarCard } from "@/components/landing/pillar-card";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { Footer } from "@/components/layout/footer";
+import { PointerHighlight } from "@/components/ui/pointer-highlight";
 import { 
   Zap, 
   LineChart, 
@@ -134,9 +135,14 @@ export default function LandingPage() {
                 transition={{ duration: 0.5 }}
               >
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
-                <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                  Everything you need to validate your SaaS idea and create a comprehensive implementation blueprint.
-                </p>
+                <PointerHighlight
+                  rectangleClassName="border-purple-500 dark:border-purple-400"
+                  pointerClassName="text-purple-500 dark:text-purple-400"
+                >
+                  <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Everything you need to validate your SaaS idea and create a comprehensive implementation blueprint.
+                  </p>
+                </PointerHighlight>
               </motion.div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -180,6 +186,24 @@ export default function LandingPage() {
                   description={step.description}
                 />
               ))}
+            </div>
+            
+            {/* Added PointerHighlight component */}
+            <div className="flex justify-center mt-16">
+              <PointerHighlight
+                rectangleClassName="border-blue-500 dark:border-blue-400"
+                pointerClassName="text-blue-500 dark:text-blue-400"
+              >
+                <motion.div 
+                  className="text-2xl md:text-3xl font-bold text-center max-w-3xl mx-auto leading-tight"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                >
+                  The best way to validate your SaaS idea is to <span className="text-blue-600 dark:text-blue-400">collaborate with AI</span>
+                </motion.div>
+              </PointerHighlight>
             </div>
           </div>
         </section>

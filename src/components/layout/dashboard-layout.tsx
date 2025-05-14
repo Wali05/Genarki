@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { UserButton } from "@clerk/nextjs";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@/context/auth-context";
 import { 
   LayoutDashboard, 
   Lightbulb, 
@@ -16,32 +15,77 @@ import {
   LogOut,
   Home,
   UserCircle2,
-  ArrowLeft
+  ArrowLeft,
+  GitBranch,
+  Network,
+  Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
-import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
+import { Sidebar, SidebarBody, SidebarLink, Logo, LogoIcon } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+// Custom UserButton component
+function UserButton() {
+  const { user, signOut } = useAuth();
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile">Profile</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">Settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut()}>
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { user, isLoaded } = useUser();
+  const { user, loading } = useAuth();
   
   const links = [
     {
       label: "Dashboard",
       href: "/dashboard",
       icon: (
-        <Home className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+        <LayoutDashboard className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
     {
-      label: "My Projects",
+      label: "Ideas",
       href: "/projects",
       icon: (
         <Lightbulb className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
@@ -55,10 +99,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       ),
     },
     {
-      label: "Feedback",
-      href: "/feedback",
+      label: "Generate",
+      href: "/generate",
       icon: (
-        <MessageSquare className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+        <Send className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Workflow",
+      href: "/workflow",
+      icon: (
+        <Network className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "User Flow",
+      href: "/userflow",
+      icon: (
+        <GitBranch className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
     {
@@ -73,7 +131,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex min-h-screen">
         <Sidebar open={open} setOpen={setOpen}>
-          <SidebarBody className="justify-between gap-10">
+          <SidebarBody className="justify-between">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
               {open ? <Logo /> : <LogoIcon />}
               <div className="mt-8 flex flex-col gap-2">
@@ -86,21 +144,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 ))}
               </div>
             </div>
-            <div className="flex flex-col gap-4">
-              <SidebarLink
-                link={{
-                  label: isLoaded && user?.firstName ? `${user.firstName} ${user.lastName || ''}` : "User Profile",
-                  href: "/profile",
-                  icon: (
-                    <div
-                      className="h-7 w-7 shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium"
-                    >
-                      {isLoaded && user?.firstName ? user.firstName[0] : "U"}
-                    </div>
-                  ),
-                }}
-              />
-            </div>
           </SidebarBody>
         </Sidebar>
 
@@ -110,51 +153,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <header className="flex items-center justify-end h-16 px-6 border-b border-neutral-200 dark:border-neutral-800">
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "h-8 w-8"
-                  }
-                }}
-              />
+              <UserButton />
             </div>
           </header>
           
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
       </div>
     </div>
   );
-}
-
-export const Logo = () => {
-  return (
-    <a
-      href="/dashboard"
-      className="relative z-20 flex items-center space-x-2 py-1 text-sm font-normal text-black"
-    >
-      <div className="h-5 w-6 shrink-0 rounded-tl-lg rounded-tr-sm rounded-br-lg rounded-bl-sm bg-blue-600 dark:bg-blue-500" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-medium whitespace-pre text-black dark:text-white"
-      >
-        Genarki
-      </motion.span>
-    </a>
-  );
-};
-
-export const LogoIcon = () => {
-  return (
-    <a
-      href="/dashboard"
-      className="relative z-20 flex items-center space-x-2 py-1 text-sm font-normal text-black"
-    >
-      <div className="h-5 w-6 shrink-0 rounded-tl-lg rounded-tr-sm rounded-br-lg rounded-bl-sm bg-blue-600 dark:bg-blue-500" />
-    </a>
-  );
-}; 
+} 

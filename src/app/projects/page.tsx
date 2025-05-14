@@ -11,7 +11,7 @@ import { PlusCircle, Search, Star, Trash2, ChevronRight, ArrowUpDown, Loader2 } 
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@/context/auth-context";
 
 type Project = {
   id: string;
@@ -59,70 +59,82 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const { user } = useUser();
+  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchProjects() {
       setLoading(true);
       
       try {
-        if (!user) {
-          // If no user is logged in, use session storage for development
-          const storedIdea = sessionStorage.getItem('currentIdea');
-          if (storedIdea) {
-            try {
-              const parsedIdea = JSON.parse(storedIdea);
-              const blueprintData = sessionStorage.getItem('currentBlueprint');
-              let progress = 0;
-              
-              if (blueprintData) {
-                const blueprint = JSON.parse(blueprintData);
-                // Calculate progress based on completed sections
-                const sections = Object.keys(blueprint).filter(k => 
-                  blueprint[k] && typeof blueprint[k] === 'object' && Object.keys(blueprint[k]).length > 0
-                ).length;
-                progress = Math.min(100, Math.round((sections / 6) * 100));
-              }
-              
-              // Create a project from the stored idea
-              const newProject: Project = {
-                id: parsedIdea.id,
-                title: parsedIdea.title,
-                description: parsedIdea.description,
-                validation_score: parsedIdea.validation_score || 7,
-                created_at: parsedIdea.created_at || new Date().toISOString(),
-                status: progress >= 100 ? "completed" : progress > 30 ? "in_progress" : "planning",
-                progress: progress
-              };
-              
-              setProjects([newProject]);
-            } catch (error) {
-              console.error("Error parsing stored idea:", error);
-              setProjects([]);
+        // Always check session storage first, regardless of user status
+        const storedIdea = sessionStorage.getItem('currentIdea');
+        const sessionProjects: Project[] = [];
+        
+        if (storedIdea) {
+          try {
+            const parsedIdea = JSON.parse(storedIdea);
+            const blueprintData = sessionStorage.getItem('currentBlueprint');
+            let progress = 0;
+            
+            if (blueprintData) {
+              const blueprint = JSON.parse(blueprintData);
+              // Calculate progress based on completed sections
+              const sections = Object.keys(blueprint).filter(k => 
+                blueprint[k] && typeof blueprint[k] === 'object' && Object.keys(blueprint[k]).length > 0
+              ).length;
+              progress = Math.min(100, Math.round((sections / 6) * 100));
             }
-          } else {
-            setProjects([]);
+            
+            // Create a project from the stored idea
+            const newProject: Project = {
+              id: parsedIdea.id,
+              title: parsedIdea.title,
+              description: parsedIdea.description,
+              validation_score: parsedIdea.validation_score || 7,
+              created_at: parsedIdea.created_at || new Date().toISOString(),
+              status: progress >= 100 ? "completed" : progress > 30 ? "in_progress" : "planning",
+              progress: progress
+            };
+            
+            sessionProjects.push(newProject);
+          } catch (error) {
+            console.error("Error parsing stored idea:", error);
           }
+        }
+        
+        // If we're not logged in, just use session storage projects
+        if (!user) {
+          setProjects(sessionProjects);
           setLoading(false);
           return;
         }
         
-        // Fetch ideas from Supabase
+        console.log("Fetching Supabase projects for user:", user.id);
+        
+        // Otherwise, also fetch from Supabase and combine with session storage
         const { data: ideasData, error: ideasError } = await supabase
           .from('ideas')
           .select('*')
           .eq('user_id', user.id);
         
         if (ideasError) {
-          console.error("Error fetching ideas:", ideasError);
-          toast.error("Failed to load projects");
-          setProjects([]);
+          console.error("Error fetching ideas from Supabase:", ideasError);
+          
+          // If Supabase fetch fails, still show session storage projects
+          if (sessionProjects.length > 0) {
+            setProjects(sessionProjects);
+          } else {
+            toast.error("Failed to load projects");
+            setProjects([]);
+          }
+          
           setLoading(false);
           return;
         }
         
+        // If no Supabase projects but we have session projects, use those
         if (!ideasData || ideasData.length === 0) {
-          setProjects([]);
+          setProjects(sessionProjects);
           setLoading(false);
           return;
         }
@@ -167,11 +179,43 @@ export default function ProjectsPage() {
           };
         });
         
-        setProjects(projectsData);
+        // Combine session projects with Supabase projects, avoiding duplicates
+        const combinedProjects = [...projectsData];
+        
+        // Add session projects that don't exist in Supabase
+        sessionProjects.forEach(sessionProject => {
+          if (!combinedProjects.some(p => p.id === sessionProject.id)) {
+            combinedProjects.push(sessionProject);
+          }
+        });
+        
+        setProjects(combinedProjects);
       } catch (error) {
         console.error("Error fetching projects:", error);
-        toast.error("Failed to load projects");
-        setProjects([]);
+        
+        // Always try to show session storage projects even if there's an error
+        const storedIdea = sessionStorage.getItem('currentIdea');
+        if (storedIdea) {
+          try {
+            const parsedIdea = JSON.parse(storedIdea);
+            const newProject: Project = {
+              id: parsedIdea.id,
+              title: parsedIdea.title,
+              description: parsedIdea.description,
+              validation_score: parsedIdea.validation_score || 7,
+              created_at: parsedIdea.created_at || new Date().toISOString(),
+              status: "planning",
+              progress: 30
+            };
+            setProjects([newProject]);
+          } catch (e) {
+            toast.error("Failed to load projects");
+            setProjects([]);
+          }
+        } else {
+          toast.error("Failed to load projects");
+          setProjects([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -196,8 +240,26 @@ export default function ProjectsPage() {
     try {
       setProjects(projects.filter(project => project.id !== projectId));
       
-      // If user is logged in, delete from Supabase
+      // Always try to remove from sessionStorage first
+      const storedIdea = sessionStorage.getItem('currentIdea');
+      if (storedIdea) {
+        try {
+          const parsedIdea = JSON.parse(storedIdea);
+          if (parsedIdea.id === projectId) {
+            console.log("Removing project from session storage:", projectId);
+            sessionStorage.removeItem('currentIdea');
+            sessionStorage.removeItem('currentBlueprint');
+            sessionStorage.removeItem('projectSaved');
+          }
+        } catch (e) {
+          console.error("Error parsing stored idea:", e);
+        }
+      }
+      
+      // If user is logged in, also delete from Supabase
       if (user) {
+        console.log("Deleting project from Supabase:", projectId);
+        
         // First delete any blueprint (due to foreign key constraint)
         const { error: blueprintError } = await supabase
           .from('blueprints')
@@ -218,16 +280,6 @@ export default function ProjectsPage() {
           console.error("Error deleting idea:", ideaError);
           toast.error("Failed to delete project");
           return;
-        }
-      } else {
-        // For development mode, remove from sessionStorage
-        const storedIdea = sessionStorage.getItem('currentIdea');
-        if (storedIdea) {
-          const parsedIdea = JSON.parse(storedIdea);
-          if (parsedIdea.id === projectId) {
-            sessionStorage.removeItem('currentIdea');
-            sessionStorage.removeItem('currentBlueprint');
-          }
         }
       }
       

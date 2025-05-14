@@ -2,7 +2,7 @@
 
 import { MainLayout } from "@/components/layout/main-layout";
 import { motion } from "framer-motion";
-import { SignUp } from "@clerk/nextjs";
+import { SignUpForm } from "@/components/auth/sign-up-form";
 
 export default function SignUpPage() {
   return (
@@ -14,14 +14,7 @@ export default function SignUpPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md mx-auto"
         >
-          <SignUp 
-            appearance={{
-              elements: {
-                rootBox: "mx-auto",
-                card: "mx-auto"
-              }
-            }}
-          />
+          <SignUpForm />
         </motion.div>
       </div>
     </MainLayout>

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { SignIn } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { SignInForm } from "@/components/auth/sign-in-form";
 
 export default function SignInPage() {
   return (
@@ -32,17 +32,7 @@ export default function SignInPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <SignIn 
-            appearance={{
-              elements: {
-                rootBox: "mx-auto shadow-xl rounded-xl",
-                card: "mx-auto p-8",
-                headerTitle: "text-2xl font-semibold",
-                headerSubtitle: "text-muted-foreground",
-                formButtonPrimary: "bg-blue-600 hover:bg-blue-500"
-              }
-            }}
-          />
+          <SignInForm />
         </motion.div>
       </div>
     </div>

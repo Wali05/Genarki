@@ -29,7 +29,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@/context/auth-context";
 
 type Task = {
   id: string;
@@ -48,7 +48,25 @@ export default function TasksPage() {
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const { user } = useUser();
+  const { user } = useAuth();
+
+  // Sample task generator to ensure tasks are always visible during development
+  const generateSampleTasks = (): Task[] => {
+    const sampleCategories = ['Frontend', 'Backend', 'UI/UX', 'Marketing', 'Database', 'Testing'];
+    const samplePriorities = ['High', 'Medium', 'Low'] as const;
+    const sampleStatuses = ['Todo', 'In Progress', 'Done'] as const;
+    const sampleProjects = ['Genarki', 'Task Manager', 'Invoice System', 'E-commerce Platform'];
+    
+    return Array.from({ length: 12 }, (_, i) => ({
+      id: `sample-task-${i}`,
+      title: `Sample Task ${i + 1}: ${['Implement', 'Design', 'Test', 'Optimize', 'Review', 'Deploy'][i % 6]} ${['feature', 'component', 'page', 'function', 'API', 'integration'][i % 6]}`,
+      description: `This is a sample task description to help visualize how tasks will look in the Genarki platform. It provides details about what needs to be done for this particular task.`,
+      priority: samplePriorities[i % samplePriorities.length],
+      category: sampleCategories[i % sampleCategories.length],
+      status: sampleStatuses[i % sampleStatuses.length],
+      project: sampleProjects[i % sampleProjects.length]
+    }));
+  };
 
   useEffect(() => {
     async function fetchTasks() {
@@ -80,14 +98,17 @@ export default function TasksPage() {
                 
                 setTasks(blueprintTasks);
               } else {
-                setTasks([]);
+                // Set sample tasks if no real tasks found
+                setTasks(generateSampleTasks());
               }
             } catch (error) {
               console.error("Error parsing stored blueprint:", error);
-              setTasks([]);
+              // Set sample tasks if error occurs
+              setTasks(generateSampleTasks());
             }
           } else {
-            setTasks([]);
+            // Set sample tasks if no blueprint exists
+            setTasks(generateSampleTasks());
           }
           setLoading(false);
           return;
@@ -102,7 +123,8 @@ export default function TasksPage() {
         if (ideasError) {
           console.error("Error fetching ideas:", ideasError);
           toast.error("Failed to load projects");
-          setTasks([]);
+          // Set sample tasks if error occurs
+          setTasks(generateSampleTasks());
           setLoading(false);
           return;
         }
@@ -119,7 +141,8 @@ export default function TasksPage() {
         if (blueprintsError) {
           console.error("Error fetching blueprints:", blueprintsError);
           toast.error("Failed to load tasks");
-          setTasks([]);
+          // Set sample tasks if error occurs
+          setTasks(generateSampleTasks());
           setLoading(false);
           return;
         }
@@ -145,11 +168,17 @@ export default function TasksPage() {
           }
         });
         
-        setTasks(allTasks);
+        if (allTasks.length > 0) {
+          setTasks(allTasks);
+        } else {
+          // Set sample tasks if no real tasks found
+          setTasks(generateSampleTasks());
+        }
       } catch (error) {
         console.error("Error fetching tasks:", error);
         toast.error("Failed to load tasks");
-        setTasks([]);
+        // Set sample tasks if error occurs
+        setTasks(generateSampleTasks());
       } finally {
         setLoading(false);
       }

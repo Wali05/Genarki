@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/context/auth-context";
 import { Sparkles, ArrowRight } from "lucide-react";
 
 export function HeroSection() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { user, loading } = useAuth();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [windowSize, setWindowSize] = useState({ width: 1200, height: 800 });
   const [particles, setParticles] = useState<Array<{ id: number, x: number, y: number, opacity: number, size: number }>>([]);
@@ -151,8 +151,8 @@ export function HeroSection() {
               size="lg" 
               className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-lg px-6 group"
             >
-              <Link href={isLoaded && isSignedIn ? "/dashboard" : "/sign-up"}>
-                {isLoaded && isSignedIn ? "Go to Dashboard" : "Get Started Free"}
+              <Link href={!loading && user ? "/dashboard" : "/sign-up"}>
+                {!loading && user ? "Go to Dashboard" : "Get Started Free"}
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
